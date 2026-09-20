@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ankel — 生徒会総務AIアシスタント</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width%3D%22180%22 height%3D%22180%22 viewBox%3D%220 0 180 180%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect width%3D%22180%22 height%3D%22180%22 rx%3D%2237.8%22 fill%3D%22%230d1117%22%2F%3E%3Cpath d%3D%22M80%2C12L108%2C52L148%2C80L108%2C108L80%2C148L52%2C108L12%2C80L52%2C52Z%22 fill%3D%22none%22 stroke%3D%22%2376c0ea%22 stroke-width%3D%2220%22%2F%3E%3C%2Fsvg%3E" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --bg2: #0f1723; --bg3: #1a2233;
+      --border: #1e2d3d; --accent: #76c0ea; --accent2: #4a9eca;
+      --text: #c9d1d9; --text2: #8b949e; --text3: #6e7681;
+      --user-bg: #1c2d3f; --ai-bg: #111827;
+      --success: #3fb950; --warning: #d29922;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
+
+    /* ヘッダー */
+    #header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-logo svg { display: block; }
+    .header-title { font-size: 1.1rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); }
+    .header-sub { font-size: 0.7rem; color: var(--text3); letter-spacing: 1px; }
+    .header-spacer { flex: 1; }
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); }
+    #status-dot.ok { background: var(--success); }
+    #status-dot.error { background: #f85149; }
+    #status-text { font-size: 0.72rem; color: var(--text3); }
+
+    /* インポートボタン */
+    #import-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; background: transparent;
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text2); font-size: 0.78rem; cursor: pointer;
+      transition: all 0.2s;
+    }
+    #import-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #file-input { display: none; }
+
+    /* チャットエリア */
+    #chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 53px); }
+    #messages { flex: 1; overflow-y: auto; padding: 24px 0; }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .message { display: flex; gap: 12px; padding: 8px 20px; max-width: 900px; margin: 0 auto; width: 100%; }
+    .msg-avatar {
+      width: 28px; height: 28px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .message.user .msg-avatar { background: var(--user-bg); color: var(--accent); font-size: 12px; font-weight: bold; }
+    .message.assistant .msg-avatar { background: var(--bg3); }
+    .msg-body { flex: 1; min-width: 0; }
+    .msg-text {
+      line-height: 1.75; white-space: pre-wrap; word-break: break-word;
+      padding: 10px 14px; border-radius: 8px;
+    }
+    .message.user .msg-text { background: var(--user-bg); color: var(--text); }
+    .message.assistant .msg-text { background: var(--ai-bg); color: var(--text); }
+
+    /* ソース表示 */
+    .msg-sources { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .source-tag {
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text3); cursor: default;
+    }
+    .source-tag.handover { border-color: var(--warning); color: var(--warning); }
+
+    /* 入力エリア */
+    #input-area {
+      padding: 16px 20px; background: var(--bg2);
+      border-top: 1px solid var(--border);
+    }
+    .input-wrap {
+      display: flex; gap: 8px; max-width: 900px; margin: 0 auto;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px;
+      transition: border-color 0.2s;
+    }
+    .input-wrap:focus-within { border-color: var(--accent2); }
+    #user-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-size: 14px; resize: none;
+      font-family: inherit; line-height: 1.5; max-height: 160px;
+    }
+    #user-input::placeholder { color: var(--text3); }
+    #send-btn {
+      align-self: flex-end; padding: 6px 14px;
+      background: var(--accent2); border: none; border-radius: 6px;
+      color: #fff; font-size: 13px; cursor: pointer;
+      transition: background 0.2s; white-space: nowrap;
+    }
+    #send-btn:hover { background: var(--accent); }
+    #send-btn:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+
+    /* インポートオーバーレイ */
+    #import-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    #import-overlay.show { display: flex; }
+    .import-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 32px; width: 420px; text-align: center;
+    }
+    .import-card h2 { font-size: 1rem; margin-bottom: 8px; color: var(--accent); }
+    .import-card p { font-size: 0.8rem; color: var(--text3); margin-bottom: 20px; }
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 8px;
+      padding: 32px; cursor: pointer; transition: border-color 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.drag { border-color: var(--accent); }
+    .drop-zone p { color: var(--text2); font-size: 0.85rem; }
+    #progress-wrap { margin-top: 16px; display: none; }
+    .progress-bar-outer { background: var(--bg3); border-radius: 4px; height: 6px; overflow: hidden; }
+    .progress-bar-inner { background: var(--accent); height: 100%; width: 0; transition: width 0.3s; }
+    #progress-text { font-size: 0.75rem; color: var(--text3); margin-top: 6px; }
+    #import-close {
+      margin-top: 16px; padding: 6px 20px; background: transparent;
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text2); cursor: pointer; font-size: 0.8rem;
+    }
+    #import-close:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* トースト */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 8px 20px; border-radius: 8px;
+      font-size: 0.8rem; opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; z-index: 200;
+    }
+    #toast.show { opacity: 1; }
+
+    /* カーソル点滅 */
+    .cursor { display: inline-block; width: 2px; height: 14px; background: var(--accent); margin-left: 2px; animation: blink 1s infinite; vertical-align: middle; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-logo">
+    <svg width="32" height="32" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+      <rect width="180" height="180" rx="37.8" fill="#0d1117"/>
+      <path d="M80,12L108,52L148,80L108,108L80,148L52,108L12,80L52,52Z" fill="none" stroke="#76c0ea" stroke-width="20"/>
+    </svg>
+  </div>
+  <div>
+    <div class="header-title">ANKEL</div>
+    <div class="header-sub">生徒会総務AIアシスタント · Ollama</div>
+  </div>
+  <div class="header-spacer"></div>
+  <button id="import-btn">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+    データ更新
+  </button>
+  <input type="file" id="file-input" accept=".json" />
+  <div id="status-dot"></div>
+  <span id="status-text">接続確認中...</span>
+</div>
+
+<div id="chat-wrap">
+  <div id="messages">
+    <div class="message assistant">
+      <div class="msg-avatar">
+        <svg width="18" height="18" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+          <rect width="180" height="180" rx="37.8" fill="#0d1117"/>
+          <path d="M80,12L108,52L148,80L108,108L80,148L52,108L12,80L52,52Z" fill="none" stroke="#76c0ea" stroke-width="20"/>
+        </svg>
+      </div>
+      <div class="msg-body">
+        <div class="msg-text">こんにちは。生徒会総務AIアシスタント「Ankel」です。
+Scrapboxの過去資料を参照しながら、校閲・資料作成・問題解決をサポートします。
+右上の「データ更新」からScrapbox JSONをインポートして開始してください。</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-area">
+    <div class="input-wrap">
+      <textarea id="user-input" placeholder="質問・依頼を入力してください…（Shift+Enterで改行）" rows="1"></textarea>
+      <button id="send-btn">送信 ↵</button>
+    </div>
+  </div>
+</div>
+
+<!-- インポートオーバーレイ -->
+<div id="import-overlay">
+  <div class="import-card">
+    <h2>Scrapbox JSONをインポート</h2>
+    <p>Scrapbox → 設定 → Export からJSONをダウンロードしてください</p>
+    <div class="drop-zone" id="drop-zone">
+      <p>JSONファイルをドロップ<br>またはクリックして選択</p>
+      <input type="file" id="drop-input" accept=".json" style="display:none" />
+    </div>
+    <div id="progress-wrap">
+      <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar"></div></div>
+      <div id="progress-text">インポート中...</div>
+    </div>
+    <button id="import-close">キャンセル</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:3000';
+let history = [];
+let generating = false;
+
+// ─── ステータス確認 ───
+async function checkServer() {
+  try {
+    const res = await fetch(`${API}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'ping', history: [] }),
+    });
+    setStatus('ok', 'サーバー接続済み');
+  } catch {
+    setStatus('error', 'サーバーに接続できません');
+  }
+}
+
+function setStatus(type, text) {
+  const dot = document.getElementById('status-dot');
+  dot.className = type === 'ok' ? 'ok' : type === 'error' ? 'error' : '';
+  document.getElementById('status-text').textContent = text;
+}
+
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ─── メッセージ追加 ───
+function addMessage(role, text, sources) {
+  const wrap = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const avatarHtml = role === 'user'
+    ? `<div class="msg-avatar">You</div>`
+    : `<div class="msg-avatar"><svg width="18" height="18" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><rect width="180" height="180" rx="37.8" fill="#0d1117"/><path d="M80,12L108,52L148,80L108,108L80,148L52,108L12,80L52,52Z" fill="none" stroke="#76c0ea" stroke-width="20"/></svg></div>`;
+
+  const sourcesHtml = sources && sources.length > 0
+    ? `<div class="msg-sources">${sources.map(s =>
+        `<span class="source-tag${s.isHandover ? ' handover' : ''}" title="score:${s.score}">${s.year || '?'} #${s.tag || '?'} ${s.title}</span>`
+      ).join('')}</div>`
+    : '';
+
+  div.innerHTML = `${avatarHtml}<div class="msg-body"><div class="msg-text">${escHtml(text)}</div>${sourcesHtml}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div.querySelector('.msg-text');
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── ストリーミング送信 ───
+async function sendMessage() {
+  if (generating) return;
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  generating = true;
+  document.getElementById('send-btn').disabled = true;
+
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+
+  const wrap = document.getElementById('messages');
+  const aiDiv = document.createElement('div');
+  aiDiv.className = 'message assistant';
+  aiDiv.innerHTML = `<div class="msg-avatar"><svg width="18" height="18" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><rect width="180" height="180" rx="37.8" fill="#0d1117"/><path d="M80,12L108,52L148,80L108,108L80,148L52,108L12,80L52,52Z" fill="none" stroke="#76c0ea" stroke-width="20"/></svg></div><div class="msg-body"><div class="msg-text"><span class="cursor"></span></div><div class="msg-sources"></div></div>`;
+  wrap.appendChild(aiDiv);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  const textEl = aiDiv.querySelector('.msg-text');
+  const sourcesEl = aiDiv.querySelector('.msg-sources');
+  let fullText = '';
+
+  try {
+    const res = await fetch(`${API}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, history: history.slice(-4) }),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split('\n').filter(l => l.startsWith('data: '));
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.content) {
+            fullText += data.content;
+            textEl.innerHTML = escHtml(fullText) + '<span class="cursor"></span>';
+            wrap.scrollTop = wrap.scrollHeight;
+          }
+          if (data.done) {
+            textEl.innerHTML = escHtml(fullText);
+            if (data.sources && data.sources.length > 0) {
+              sourcesEl.innerHTML = data.sources.map(s =>
+                `<span class="source-tag${s.isHandover ? ' handover' : ''}" title="score:${s.score}">${s.year || '?'} #${s.tag || '?'} ${s.title}</span>`
+              ).join('');
+            }
+          }
+          if (data.error) {
+            textEl.textContent = 'エラー: ' + data.error;
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    textEl.textContent = 'サーバーに接続できません。サーバーが起動しているか確認してください。';
+  }
+
+  history.push({ role: 'assistant', content: fullText });
+  if (history.length > 10) history = history.slice(-10);
+
+  generating = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+
+// ─── 入力欄の自動リサイズ ───
+const userInput = document.getElementById('user-input');
+userInput.addEventListener('input', () => {
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 160) + 'px';
+});
+userInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+// ─── インポート ───
+function openImport() {
+  document.getElementById('import-overlay').classList.add('show');
+}
+function closeImport() {
+  document.getElementById('import-overlay').classList.remove('show');
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('progress-bar').style.width = '0';
+}
+
+async function importFile(file) {
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('progress-text').textContent = '読み込み中...';
+  document.getElementById('progress-bar').style.width = '30%';
+
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    document.getElementById('progress-text').textContent = 'サーバーに送信中...';
+    document.getElementById('progress-bar').style.width = '60%';
+
+    const res = await fetch(`${API}/api/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(json),
+    });
+    const data = await res.json();
+
+    document.getElementById('progress-bar').style.width = '100%';
+    document.getElementById('progress-text').textContent = `完了: ${data.pages}ページ, ${data.chunks}チャンク`;
+    setStatus('ok', `${data.pages}ページ読み込み済み`);
+    showToast(`インポート完了: ${data.pages}ページ`);
+    setTimeout(closeImport, 1500);
+  } catch (e) {
+    document.getElementById('progress-text').textContent = 'エラー: ' + e.message;
+  }
+}
+
+document.getElementById('import-btn').addEventListener('click', openImport);
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) importFile(e.target.files[0]);
+});
+document.getElementById('import-close').addEventListener('click', closeImport);
+
+const dropZone = document.getElementById('drop-zone');
+const dropInput = document.getElementById('drop-input');
+dropZone.addEventListener('click', () => dropInput.click());
+dropInput.addEventListener('change', e => { if (e.target.files[0]) importFile(e.target.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) importFile(e.dataTransfer.files[0]);
+});
+
+// 起動時確認
+checkServer();
+</script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ankel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f0f10;
+    --surface: #1a1a1d;
+    --surface2: #232327;
+    --border: #2e2e33;
+    --accent: #76c0ea;
+    --accent2: #5aaad4;
+    --text: #e8e8ea;
+    --text2: #9a9aa8;
+    --text3: #5a5a68;
+    --tag: #3b3b45;
+    --handover: #1a2030;
+    --handover-accent: #76c0ea;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ヘッダー */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(15,15,16,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .logo span {
+    color: var(--text3);
+    font-size: 12px;
+    margin-left: 8px;
+    font-weight: 400;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .status.ready { color: var(--accent); }
+
+  label.import-btn {
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface);
+    white-space: nowrap;
+  }
+
+  label.import-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  #fileInput { display: none; }
+
+  /* 検索エリア */
+  .search-area {
+    padding: 40px 24px 24px;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  #searchInput {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: var(--radius) 0 0 var(--radius);
+    padding: 14px 18px;
+    font-size: 15px;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  #searchInput:focus {
+    border-color: var(--accent);
+  }
+
+  #searchInput::placeholder { color: var(--text3); }
+
+  #searchBtn {
+    background: var(--accent);
+    color: #0f0f10;
+    border: none;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 14px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  #searchBtn:hover { background: var(--accent2); }
+
+  .search-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text3);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .hint-tag {
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+
+  .hint-tag:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* メインコンテンツ */
+  main {
+    flex: 1;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 24px 40px;
+  }
+
+  /* 初期状態 */
+  .empty-state {
+    text-align: center;
+    padding: 80px 0;
+    color: var(--text3);
+  }
+
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  /* 結果ヘッダー */
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-count {
+    font-size: 13px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .results-count strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* 検索結果カード */
+  .result-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    overflow: hidden;
+    background: var(--surface);
+    transition: border-color 0.15s;
+  }
+
+  .result-card:hover { border-color: var(--text3); }
+  .result-card.open { border-color: var(--accent); }
+  .result-card.handover { background: var(--handover); }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    cursor: pointer;
+    gap: 12px;
+    user-select: none;
+  }
+
+  .result-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    min-width: 24px;
+    text-align: right;
+  }
+
+  .result-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .result-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--tag);
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .year-badge {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .handover-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--handover-accent);
+    color: #0f0f10;
+    font-weight: 700;
+  }
+
+  .reviewer-badge {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .result-snippet {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-score {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    white-space: nowrap;
+  }
+
+  .result-toggle {
+    font-size: 12px;
+    color: var(--text3);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .result-card.open .result-toggle { transform: rotate(90deg); }
+
+  /* 本文展開エリア */
+  .result-body {
+    display: none;
+    padding: 0 16px 16px 52px;
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+  }
+
+  .result-card.open .result-body { display: block; }
+
+  .body-loading {
+    padding: 16px 0;
+    font-size: 13px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .body-content {
+    padding-top: 14px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--text2);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .body-content::-webkit-scrollbar { width: 4px; }
+  .body-content::-webkit-scrollbar-track { background: transparent; }
+  .body-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ローディング */
+  .loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 32px 0;
+    color: var(--text3);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* エラー */
+  .error-msg {
+    padding: 16px;
+    border: 1px solid #ef4444;
+    border-radius: var(--radius);
+    color: #ef4444;
+    font-size: 13px;
+    background: rgba(239,68,68,0.05);
+  }
+
+  /* スクロールバー全体 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="24" height="24" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:8px;">
+      <path d="M80,12L108,52L148,80L108,108L80,148L52,108L12,80L52,52Z" fill="none" stroke="#76c0ea" stroke-width="20"/>
+    </svg>
+    Ankel
+    <span>生徒会資料検索</span>
+  </div>
+  <div class="header-right">
+    <span class="status" id="status">データなし</span>
+    <label class="import-btn" for="fileInput">📥 データ更新</label>
+    <input type="file" id="fileInput" accept=".json">
+  </div>
+</header>
+
+<div class="search-area">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="例：生徒総会の誘導方法、文化祭の反省、広報引き継ぎ…" autocomplete="off">
+    <button id="searchBtn">検索</button>
+  </div>
+  <div class="search-hint">
+    <span style="color: var(--text3); font-size: 12px;">例：</span>
+    <span class="hint-tag">生徒総会の流れ</span>
+    <span class="hint-tag">文化祭の反省</span>
+    <span class="hint-tag">広報 引き継ぎ</span>
+    <span class="hint-tag">予算 決算</span>
+    <span class="hint-tag">対面式 誘導</span>
+  </div>
+</div>
+
+<main>
+  <div class="empty-state" id="emptyState">
+    <div class="icon">🔍</div>
+    <p>キーワードを入力して検索してください<br>
+    タイトルをクリックすると本文が展開されます</p>
+  </div>
+
+  <div id="results" style="display:none;"></div>
+</main>
+
+<script>
+const API = '';  // 同一オリジン
+
+let pageCount = 0;
+
+// --- データインポート ---
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const status = document.getElementById('status');
+  status.textContent = 'インポート中…';
+  status.className = 'status';
+
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    const res = await fetch(`${API}/api/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(json),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      pageCount = data.valid;
+      status.textContent = `${data.valid.toLocaleString()} ページ`;
+      status.className = 'status ready';
+    } else {
+      status.textContent = 'エラー';
+    }
+  } catch (err) {
+    status.textContent = 'エラー';
+    console.error(err);
+  }
+  e.target.value = '';
+});
+
+// --- 検索 ---
+async function doSearch() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) return;
+
+  const resultsEl = document.getElementById('results');
+  const emptyEl = document.getElementById('emptyState');
+
+  emptyEl.style.display = 'none';
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div class="loading"><div class="spinner"></div>検索中…</div>';
+
+  try {
+    const res = await fetch(`${API}/api/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+
+    if (!data.ok || !data.results.length) {
+      resultsEl.innerHTML = '<div class="error-msg">該当する資料が見つかりませんでした。別のキーワードを試してください。</div>';
+      return;
+    }
+
+    renderResults(data.results, query);
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="error-msg">検索エラー：${err.message}</div>`;
+  }
+}
+
+function renderResults(results, query) {
+  const resultsEl = document.getElementById('results');
+
+  let html = `<div class="results-header">
+    <span class="results-count">「${escHtml(query)}」の検索結果：<strong>${results.length}</strong> 件</span>
+  </div>`;
+
+  results.forEach((r, i) => {
+    const isHandover = r.isHandover ? 'handover' : '';
+    const reviewerText = r.reviewers?.length ? `校閲: ${r.reviewers.join(', ')}` : '';
+
+    html += `
+    <div class="result-card ${isHandover}" id="card-${i}">
+      <div class="result-header" onclick="toggleCard(${i}, '${escAttr(r.title)}')">
+        <span class="result-rank">${i + 1}</span>
+        <div class="result-info">
+          <div class="result-title">${escHtml(r.title)}</div>
+          <div class="result-meta">
+            ${r.year ? `<span class="year-badge">${r.year}年度</span>` : ''}
+            ${r.tag ? `<span class="tag-badge">${escHtml(r.tag)}</span>` : ''}
+            ${r.isHandover ? '<span class="handover-badge">引き継ぎ参考</span>' : ''}
+            ${reviewerText ? `<span class="reviewer-badge">${escHtml(reviewerText)}</span>` : ''}
+          </div>
+          ${r.snippet ? `<div class="result-snippet">${escHtml(r.snippet)}</div>` : ''}
+        </div>
+        <span class="result-score">${r.score}</span>
+        <span class="result-toggle">▶</span>
+      </div>
+      <div class="result-body" id="body-${i}">
+        <div class="body-loading">読み込み中…</div>
+      </div>
+    </div>`;
+  });
+
+  resultsEl.innerHTML = html;
+}
+
+// --- カード開閉 ---
+async function toggleCard(i, title) {
+  const card = document.getElementById(`card-${i}`);
+  const bodyEl = document.getElementById(`body-${i}`);
+  const isOpen = card.classList.contains('open');
+
+  // 他を閉じる
+  document.querySelectorAll('.result-card.open').forEach(c => c.classList.remove('open'));
+
+  if (isOpen) return;
+
+  card.classList.add('open');
+
+  // すでに本文が読み込まれていたらスキップ
+  if (bodyEl.dataset.loaded) return;
+
+  bodyEl.innerHTML = '<div class="body-loading">読み込み中…</div>';
+
+  try {
+    const res = await fetch(`${API}/api/page?title=${encodeURIComponent(title)}`);
+    const data = await res.json();
+
+    if (data.ok) {
+      bodyEl.innerHTML = `<div class="body-content">${escHtml(data.body)}</div>`;
+      bodyEl.dataset.loaded = '1';
+    } else {
+      bodyEl.innerHTML = '<div class="body-loading">本文を取得できませんでした。</div>';
+    }
+  } catch (err) {
+    bodyEl.innerHTML = `<div class="body-loading">エラー: ${err.message}</div>`;
+  }
+}
+
+// --- ヒントタグクリック ---
+document.querySelectorAll('.hint-tag').forEach(el => {
+  el.addEventListener('click', () => {
+    document.getElementById('searchInput').value = el.textContent;
+    doSearch();
+  });
+});
+
+// --- 検索ボタン・Enterキー ---
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// --- ユーティリティ ---
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escAttr(s) {
+  return String(s ?? '').replace(/'/g, "\\'").replace(/\n/g, '');
+}
+</script>
+</body>
+</html>
