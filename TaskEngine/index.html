@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,minimum-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TaskEngine">
+<meta name="theme-color" content="#04060a">
+<link rel="apple-touch-icon" id="flowly-icon" href="">
+<script id="flowly-icon-gen">(function(){
+/* ============================================================
+   ホーム画面アイコン ── "TaskEngine"
+   歯車（エンジン＝タスクを回す機械）＋中心の菱形コア（起動状態を
+   示すグローの光点）。名前と見た目を一致させた、抽象的すぎない
+   直接的なマーク。硝子の光沢は使わず、線とグローだけで構成する。
+   ============================================================ */
+function drawIcon(canvas){
+  var S=canvas.width,ctx=canvas.getContext('2d'),r=S*0.22;
+  function rr(){ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(S-r,0);ctx.arcTo(S,0,S,r,r);ctx.lineTo(S,S-r);ctx.arcTo(S,S,S-r,S,r);ctx.lineTo(r,S);ctx.arcTo(0,S,0,S-r,r);ctx.lineTo(0,r);ctx.arcTo(0,0,r,0,r);ctx.closePath();}
+  ctx.fillStyle='#04060a';rr();ctx.fill();
+  var cx=S*0.5,cy=S*0.5,teeth=8,ringR=S*0.255,toothOuter=S*0.335;
+  ctx.save();
+  ctx.shadowColor='rgba(118,192,234,0.9)';ctx.shadowBlur=S*0.045;
+  ctx.strokeStyle='rgba(118,192,234,0.9)';ctx.lineWidth=S*0.018;ctx.lineCap='round';
+  for(var i=0;i<teeth;i++){
+    var a=(Math.PI*2/teeth)*i;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(a)*ringR,cy+Math.sin(a)*ringR);
+    ctx.lineTo(cx+Math.cos(a)*toothOuter,cy+Math.sin(a)*toothOuter);
+    ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(cx,cy,ringR,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle='rgba(118,192,234,0.3)';ctx.lineWidth=S*0.008;
+  ctx.beginPath();ctx.arc(cx,cy,S*0.165,0,Math.PI*2);ctx.stroke();
+  // 中心の菱形コア（塗り+グロー、起動状態を示す光点）
+  ctx.save();
+  ctx.shadowColor='#76c0ea';ctx.shadowBlur=S*0.13;
+  ctx.translate(cx,cy);ctx.rotate(Math.PI/4);
+  var core=ctx.createLinearGradient(-S*0.09,-S*0.09,S*0.09,S*0.09);
+  core.addColorStop(0,'#eef8ff');core.addColorStop(0.5,'#76c0ea');core.addColorStop(1,'#2f7cb0');
+  ctx.fillStyle=core;
+  ctx.fillRect(-S*0.075,-S*0.075,S*0.15,S*0.15);
+  ctx.restore();
+}
+var c=document.createElement('canvas');c.width=180;c.height=180;drawIcon(c);
+var png=c.toDataURL('image/png');
+document.getElementById('flowly-icon').href=png;
+['57','72','76','114','120','144','152','180'].forEach(function(sz){var l=document.createElement('link');l.rel='apple-touch-icon';l.setAttribute('sizes',sz+'x'+sz);l.href=png;document.head.appendChild(l);});
+})();</script>
+<title>TaskEngine</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js"
+  }
+}
+</script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" href="js/app.js" as="script">
+<link rel="preload" href="css/app.css" as="style">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="bg-static"></div>
+<div id="boot-flash"></div>
+<div id="offline-badge">オフライン</div>
+<div id="toast"></div>
+
+<div id="layout">
+<!-- MOBILE HEADER — 最小限のステータス表示のみ（主導線は下部タブバーへ移設） -->
+<div id="mobile-header">
+  <div class="mobile-header-logo">
+    <svg viewBox="0 0 24 24" fill="none">
+      <line x1="20.6" y1="12.0" x2="22.6" y2="12.0" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="18.08" y1="18.08" x2="19.5" y2="19.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="12.0" y1="20.6" x2="12.0" y2="22.6" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="5.92" y1="18.08" x2="4.5" y2="19.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="3.4" y1="12.0" x2="1.4" y2="12.0" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="5.92" y1="5.92" x2="4.5" y2="4.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="12.0" y1="3.4" x2="12.0" y2="1.4" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <line x1="18.08" y1="5.92" x2="19.5" y2="4.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+      <circle cx="12" cy="12" r="8.6" fill="none" stroke="#76c0ea" stroke-width="1.3" opacity="0.85"/>
+      <circle cx="12" cy="12" r="5.5" fill="none" stroke="#76c0ea" stroke-width="0.7" opacity="0.3"/>
+      <rect x="9.7" y="9.7" width="4.6" height="4.6" fill="#76c0ea" transform="rotate(45 12 12)"/>
+    </svg>
+    TaskEngine
+  </div>
+</div>
+  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+  <div id="body-row">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" role="navigation" aria-label="メインナビゲーション">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 24 24" fill="none">
+          <line x1="20.6" y1="12.0" x2="22.6" y2="12.0" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="18.08" y1="18.08" x2="19.5" y2="19.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="12.0" y1="20.6" x2="12.0" y2="22.6" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="5.92" y1="18.08" x2="4.5" y2="19.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="3.4" y1="12.0" x2="1.4" y2="12.0" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="5.92" y1="5.92" x2="4.5" y2="4.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="12.0" y1="3.4" x2="12.0" y2="1.4" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <line x1="18.08" y1="5.92" x2="19.5" y2="4.5" stroke="#76c0ea" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+          <circle cx="12" cy="12" r="8.6" fill="none" stroke="#76c0ea" stroke-width="1.3" opacity="0.85"/>
+          <circle cx="12" cy="12" r="5.5" fill="none" stroke="#76c0ea" stroke-width="0.7" opacity="0.3"/>
+          <rect x="9.7" y="9.7" width="4.6" height="4.6" fill="#76c0ea" transform="rotate(45 12 12)"/>
+        </svg>
+        TaskEngine
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-page="home" onclick="navigateTo('home')">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          今日
+        </button>
+        <button class="nav-item" data-page="tasks" onclick="navigateTo('tasks')">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+          タスク
+        </button>
+        <button class="nav-item" data-page="settings" onclick="navigateTo('settings')">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+          設定
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="sidebar-add" onclick="openAddTask()">
+          <svg viewBox="0 0 24 24" fill="none">
+            <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          タスクを追加
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div id="main-content" role="main" aria-live="polite"></div>
+  </div>
+
+  <!-- BOTTOM TAB BAR — モバイルの主導線。.nav-itemを共有しているため
+       navigateTo()側のアクティブ切替がそのまま効く（JS側は無改修）。 -->
+  <nav id="tabbar" role="navigation" aria-label="メインナビゲーション（モバイル）">
+    <div class="tabbar-row">
+      <button class="nav-item tabbar-item active" data-page="home" onclick="navigateTo('home')">
+        <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        今日
+      </button>
+      <button class="nav-item tabbar-item" data-page="tasks" onclick="navigateTo('tasks')">
+        <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+        タスク
+      </button>
+      <button class="nav-item tabbar-item" data-page="settings" onclick="navigateTo('settings')">
+        <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        設定
+      </button>
+    </div>
+  </nav>
+  <button id="fab-add" onclick="openAddTask()" aria-label="タスクを追加">
+    <svg viewBox="0 0 24 24" fill="none">
+      <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+</div>
+
+<!-- タスク追加・編集モーダル -->
+<div class="modal-overlay" id="modal-task">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-task-title">タスクを追加</div>
+    <div class="form-group">
+      <label>タイトル</label>
+      <input type="text" id="input-task-title" placeholder="例：レポート提出" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="form-group">
+      <label>種類</label>
+      <div class="type-selector">
+        <button type="button" class="type-btn active" data-type="once" onclick="setTaskType('once')">一回のみ</button>
+        <button type="button" class="type-btn" data-type="weekly" onclick="setTaskType('weekly')">毎週繰り返す</button>
+      </div>
+    </div>
+    <div class="form-group" id="deadline-row">
+      <label>期限 <span class="label-opt">任意</span></label>
+      <input type="date" id="input-task-deadline">
+    </div>
+    <div class="form-group" id="unlock-row">
+      <label>解禁日 <span class="label-opt">任意</span></label>
+      <input type="date" id="input-task-unlock">
+    </div>
+    <div class="form-group" id="weekdays-row" style="display:none">
+      <label>繰り返す曜日</label>
+      <div class="weekday-selector">
+        <button type="button" class="wd-btn" data-dow="1" onclick="toggleWeekday(this)">月</button>
+        <button type="button" class="wd-btn" data-dow="2" onclick="toggleWeekday(this)">火</button>
+        <button type="button" class="wd-btn" data-dow="3" onclick="toggleWeekday(this)">水</button>
+        <button type="button" class="wd-btn" data-dow="4" onclick="toggleWeekday(this)">木</button>
+        <button type="button" class="wd-btn" data-dow="5" onclick="toggleWeekday(this)">金</button>
+        <button type="button" class="wd-btn" data-dow="6" onclick="toggleWeekday(this)">土</button>
+        <button type="button" class="wd-btn" data-dow="0" onclick="toggleWeekday(this)">日</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>負荷（作業量の目安）</label>
+      <input type="range" id="load-slider" min="0.5" max="5" step="0.5" value="3" oninput="updateLoadSlider(this.value)">
+      <div class="load-slider-display">
+        <span id="load-slider-badge" class="badge"></span>
+        <span id="load-slider-hint" class="load-slider-hint"></span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-task')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveTask()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 削除確認 -->
+<div class="modal-overlay" id="modal-delete-confirm">
+  <div class="modal" style="max-height:60vh">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--danger)">タスクを削除</div>
+    <p style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:20px">このタスクを削除しますか？<br>この操作は取り消せません。</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete-confirm')">キャンセル</button>
+      <button class="btn btn-danger" onclick="executeDeleteTask()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<!-- リセット確認 -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-height:60vh">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--danger)">データをリセット</div>
+    <p style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:20px">すべてのデータを削除します。<br>この操作は取り消せません。</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">キャンセル</button>
+      <button class="btn btn-danger" onclick="executeReset()">リセットする</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script type="module" src="js/solar-system.js"></script>
+</body>
+</html>
